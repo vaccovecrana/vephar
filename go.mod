@@ -1,4 +1,4 @@
-module smr
+module vephar
 
 go 1.14
 
