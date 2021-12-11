@@ -3,13 +3,14 @@ package web
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/hashicorp/raft"
 	"io"
 	"sync"
+
+	"github.com/hashicorp/raft"
 )
 
 type Database struct {
-	mutex sync.Mutex
+	mutex  sync.Mutex
 	values map[string]string
 }
 
@@ -18,8 +19,8 @@ type DatabaseSnapshot struct {
 }
 
 type Command struct {
-	Op string `json:"op,omitempty"`
-	Key string `json:"key,omitempty"`
+	Op    string `json:"op,omitempty"`
+	Key   string `json:"key,omitempty"`
 	Value string `json:"value,omitempty"`
 }
 
@@ -55,7 +56,7 @@ func (d *Database) Apply(l *raft.Log) interface{} {
 }
 
 // Implements FSM for Database
-func (d *Database) Snapshot() (raft.FSMSnapshot, error)  {
+func (d *Database) Snapshot() (raft.FSMSnapshot, error) {
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
 
@@ -91,21 +92,16 @@ func (ds *DatabaseSnapshot) Persist(sink raft.SnapshotSink) error {
 		if err != nil {
 			return err
 		}
-
 		if _, err := sink.Write(buff); err != nil {
 			return err
 		}
-
 		return sink.Close()
 	}()
-
 	if err != nil {
 		sink.Cancel()
 	}
-
 	return err
 }
 
 // Implements FSMSnapshot for DatabaseSnapshot
-func (ds *DatabaseSnapshot) Release() {
-}
+func (ds *DatabaseSnapshot) Release() {}
