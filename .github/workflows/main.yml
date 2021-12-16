@@ -1,0 +1,72 @@
+name: Build and upload binaries
+on:
+  release:
+    types: [published]
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  build:
+    name: Build binaries
+    runs-on: ubuntu-latest
+    environment: "Build, sign, release binaries"
+    steps:
+      - name: Install Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.x
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Build binaries
+        run: |
+          function build_vpr() {
+            $GITHUB_WORKSPACE/build.sh
+            tar -cvzf "vephar-$GOOS-$GOARCH.tar.gz" -C "$GITHUB_WORKSPACE/srv" vephar
+          }
+          GOOS=linux GOARCH=amd64 build_vpr
+          GOOS=linux GOARCH=arm64 build_vpr
+          GOOS=darwin GOARCH=amd64 build_vpr
+          GOOS=darwin GOARCH=arm64 build_vpr
+          GOOS=freebsd GOARCH=amd64 build_vpr
+      - name: Upload workflow artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: vephar-binaries
+          path: vephar-*
+  upload:
+    name: Upload release binaries
+    if: ${{ github.event_name == 'release' }}
+    needs: build
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download workflow artifacts
+        uses: actions/download-artifact@v2
+        with:
+          name: vephar-binaries
+      - name: Upload release artifacts
+        uses: actions/github-script@v3
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require("fs").promises;
+            const { repo: { owner, repo }, sha } = context;
+            const release = await github.repos.getReleaseByTag({
+              owner, repo,
+              tag: process.env.GITHUB_REF.replace("refs/tags/", ""),
+            });
+            console.log("Release:", { release });
+            for (let file of await fs.readdir(".")) {
+              if (!file.startsWith("vephar-")) continue;
+              console.log("Uploading", file);
+              await github.repos.uploadReleaseAsset({
+                owner, repo,
+                release_id: release.data.id,
+                name: file,
+                data: await fs.readFile(file),
+              });
+            }
