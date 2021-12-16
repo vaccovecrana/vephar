@@ -68,6 +68,8 @@ These operations can also be done with the integrated web UI:
 
 http://127.0.0.1:8081/ui
 
+![vephar-ui](preview.png)
+
 The environment variables `VPR_TRACE` and `VPR_DEBUG` can be used to log a node's execution state.
 The variable values are not read, and the program only checks if they have been defined in the environment.
 
